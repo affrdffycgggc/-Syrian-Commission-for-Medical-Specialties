@@ -1,0 +1,50 @@
+# docker-compose.yml for نظام نشاطات والمؤتمرات
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # Next.js Application (with SQLite - no separate DB needed)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: activities_app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "file:./db/custom.db"
+      NEXT_TELEMETRY_DISABLED: 1
+    ports:
+      - "3000:3000"
+    volumes:
+      - app_db:/app/db
+      - app_uploads:/app/public/uploads
+    networks:
+      - activities-network
+
+  # Optional: PostgreSQL (uncomment if you want PostgreSQL instead of SQLite)
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: activities_db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: activities_db
+  #     POSTGRES_USER: activities_user
+  #     POSTGRES_PASSWORD: ChangeThisStrongPassword123!
+  #     POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - activities-network
+
+volumes:
+  app_db:
+  app_uploads:
+  # postgres_data:
+
+networks:
+  activities-network:
+    driver: bridge
