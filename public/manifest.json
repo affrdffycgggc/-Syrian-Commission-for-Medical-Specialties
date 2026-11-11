@@ -1,0 +1,53 @@
+{
+  "name": "نظام نشاطات والمؤتمرات",
+  "short_name": "النشاطات",
+  "description": "منصة نشاطات والمؤتمرات مع نظام نقاط CPD والتحقق من الحضور",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#065f46",
+  "dir": "rtl",
+  "lang": "ar",
+  "categories": ["education", "medical", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "النشاطات",
+      "short_name": "النشاطات",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "لوحة التحكم",
+      "short_name": "الإدارة",
+      "url": "/admin",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

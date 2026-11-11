@@ -1,0 +1,224 @@
+// Prisma schema for Activity/Conference Management System
+// Supports SQLite (development) and MySQL/PostgreSQL (production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Slice (شريحة): طب بشري / طب أسنان / صيدلة / تمريض / علوم مختبرية / أخرى
+// Specialty (اختصاص) belongs to a slice
+model Specialty {
+  id        String   @id @default(cuid())
+  name      String
+  slice     String   // e.g. "human_medicine", "dentistry", "pharmacy", "nursing", "lab", "other"
+  sliceName String   // Display name in Arabic, e.g. "طب بشري"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities Activity[]
+
+  @@unique([slice, name])
+}
+
+model Activity {
+  id               String   @id @default(cuid())
+  title            String
+  description      String
+  type             String
+  typeName         String
+  location         String
+  latitude         Float
+  longitude        Float
+  radius           Float    @default(100.0)
+  startDate        DateTime
+  endDate          DateTime
+  daysCount        Int
+  sessionsCount    Int
+  timePeriod       String
+  hoursCount       Float    @default(0.0)
+  cpdPoints        Float    @default(0.0)  // Practitioner-Attendance CPD (lower)
+  cpdPointsParticipation Float @default(0.0) // Practitioner-Participation CPD (higher)
+  cpdPointsResident Float  @default(0.0)  // Resident CPD (always 0)
+  requiredCpdForCertificate Float @default(0.0) // النقاط المطلوبة للحصول على الشهادة (0 = كل الجلسات)
+  fee              Float    @default(0.0)  // Practitioner fee
+  residentFee      Float    @default(0.0) // Resident fee (typically half of fee, computed)
+  capacity         Int      @default(100)
+  status           String   @default("active")
+  imageColor       String   @default("emerald")
+  featured         Boolean  @default(false)
+  organizerName    String?
+  organizerLogo    String?
+  specialtyId      String?
+  specialty         Specialty? @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
+  governorate      String?  // المحافظة (separate from detailed location)
+  // supporting organizations / sponsors
+  supportingLogos  String?  // JSON array of logo URLs
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  sessions      Session[]
+  participants  Participant[]
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  activityId    String
+  title         String
+  description   String?
+  day           Int
+  startDate      DateTime // تاريخ بداية الفترة
+  endDate        DateTime // تاريخ نهاية الفترة
+  startTime      DateTime // وقت بداية الفترة
+  endTime        DateTime // وقت نهاية الفترة
+  hasCustomLocation  Boolean @default(false)
+  location           String?
+  latitude           Float?
+  longitude          Float?
+  radius             Float?
+  hasCustomCpd       Boolean @default(false)
+  cpdPoints          Float   @default(0.0)
+  speaker            String?
+  status             String  @default("active")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  activity     Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  attendances  Attendance[]
+}
+
+model Participant {
+  id                String   @id @default(cuid())
+  nationalId        String
+  fullName          String
+  role              String   // 'practitioner' | 'resident'
+  participationType String? // 'participation' | 'attendance' (null for resident)
+  activityId        String
+  paymentStatus     String   @default("pending")
+  paymentMethod    String?
+  paymentRef        String?
+  receiptImage      String?
+  paidAt            DateTime?
+  registeredAt      DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  activity      Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  attendances   Attendance[]
+  paymentRequests PaymentRequest[]
+
+  @@unique([nationalId, activityId])
+}
+
+model Attendance {
+  id            String   @id @default(cuid())
+  participantId String
+  sessionId     String
+  verified      Boolean  @default(false)
+  verifiedAt    DateTime?
+  latitude      Float?
+  longitude     Float?
+  distance      Float?
+  cpdAwarded    Float    @default(0.0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  session      Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, sessionId])
+}
+
+model PaymentMethod {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  image         String?
+  qrCode        String?
+  walletCode    String?
+  walletName    String?
+  instructions  String?
+  isManual      Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  displayOrder  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  paymentRequests PaymentRequest[]
+}
+
+model PaymentRequest {
+  id              String   @id @default(cuid())
+  participantId   String
+  activityId      String
+  paymentMethodId String
+  operationNumber String?
+  amount          Float
+  receiptImage    String?
+  status          String   @default("pending")
+  adminNote       String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  submittedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  participant   Participant   @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+
+  @@index([participantId])
+  @@index([status])
+}
+
+model SystemSetting {
+  id              String   @id @default("singleton")
+  paymentEnabled  Boolean  @default(true)
+  maintenanceMode Boolean  @default(false)
+  manualPaymentInstructions String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Certificate Template (نموذج الشهادة)
+// Three default templates based on role + participation type:
+// 1. Resident - attendance certificate (no CPD)
+// 2. Practitioner-Participation - participation certificate (higher CPD)
+// 3. Practitioner-Attendance - attendance certificate (lower CPD)
+model CertificateTemplate {
+  id                String   @id @default(cuid())
+  name              String   // Template name
+  roleType          String   // 'resident' | 'practitioner'
+  participationType String?  // 'participation' | 'attendance' (null for resident)
+  certTitle         String   // "شهادة حضور" / "شهادة مشاركة"
+  certSubtitle      String?  // e.g. "بنتيجة الحضور"
+  authorityLogo     String?  // Logo of the Authority (الهيئة)
+  authorityName     String?  // Display name of authority
+  organizerLogo     String?  // Logo of organizer (الجهة المنظمة)
+  organizerName    String?  // Display name of organizer
+  supportingLogos   String?  // JSON array of supporting/sponsor logos
+  headerText       String?  // Header text above title
+  bodyText         String   // Body text with placeholders: {participantName}, {activityType}, {activityName}, {location}, {dateFrom}, {dateTo}, {cpdPoints}, {hoursCount}
+  footerText       String?  // Footer text
+  signatureText    String?  // Signature line text
+  signatureImage   String?  // Optional signature image
+  showCpdPoints    Boolean  @default(true) // Whether to show CPD points on cert
+  backgroundColor  String   @default("#ffffff")
+  borderColor      String   @default("#10b981")
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
